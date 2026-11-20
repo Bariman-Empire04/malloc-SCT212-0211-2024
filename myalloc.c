@@ -19,3 +19,65 @@ typedef struct block {
 
 static block_t    *head   = NULL;      
 static fit_policy_t policy = FIT_FIRST;  
+
+void *my_malloc(size_t size) {
+    
+    if (size == 0) return NULL;
+
+    
+    size = ALIGN16(size);
+
+    
+    block_t *found = NULL;
+    block_t *b     = head;
+
+    while (b != NULL) {
+        if (b->free && b->size >= size) {
+            if (policy == FIT_FIRST) {
+                found = b;
+                break;  
+            }
+            
+            if (found == NULL || b->size < found->size)
+                found = b;
+        }
+        b = b->next;
+    }
+
+    
+    if (found != NULL) {
+
+        if (found->size >= size + HEADER_SIZE + 16) {
+
+            block_t *newb = (block_t *)((char *)found + HEADER_SIZE + size);
+            newb->size    = found->size - size - HEADER_SIZE;
+            newb->free    = 1;
+            newb->next    = found->next;
+
+            found->next   = newb;
+            found->size   = size;
+        }
+        found->free = 0;
+
+        return (char *)found + HEADER_SIZE;
+    }
+
+
+    block_t *newb = sbrk(HEADER_SIZE + size);
+    if (newb == (void *)-1) return NULL;
+
+    newb->size = size;
+    newb->free = 0;
+    newb->next = NULL;
+
+    /* Append to end of list */
+    if (head == NULL) {
+        head = newb;
+    } else {
+        block_t *cur = head;
+        while (cur->next != NULL) cur = cur->next;
+        cur->next = newb;
+    }
+
+    return (char *)newb + HEADER_SIZE;
+}
