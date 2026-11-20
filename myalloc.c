@@ -70,7 +70,7 @@ void *my_malloc(size_t size) {
     newb->free = 0;
     newb->next = NULL;
 
-    /* Append to end of list */
+    
     if (head == NULL) {
         head = newb;
     } else {
@@ -78,6 +78,44 @@ void *my_malloc(size_t size) {
         while (cur->next != NULL) cur = cur->next;
         cur->next = newb;
     }
+void my_free(void *ptr) {
+    
+    if (ptr == NULL) return;
+
+    
+    block_t *b = (block_t *)((char *)ptr - HEADER_SIZE);
+
+    
+    block_t *cur = head;
+    while (cur != NULL && cur != b) cur = cur->next;
+    if (cur == NULL) {
+        fprintf(stderr, "my_free: invalid pointer %p\n", ptr);
+        return;
+    }
+
+    
+    if (b->free) {
+        fprintf(stderr, "my_free: double free of %p\n", ptr);
+        return;
+    }
+
+    b->free = 1;
+
+ 
+    if (b->next != NULL && b->next->free) {
+ 
+        b->size += HEADER_SIZE + b->next->size;
+        b->next  = b->next->next;
+    }
+
+ 
+    cur = head;
+    while (cur != NULL && cur->next != b) cur = cur->next;
+    if (cur != NULL && cur->free) {
+        cur->size += HEADER_SIZE + b->size;
+        cur->next  = b->next;
+    }
+}
 
     return (char *)newb + HEADER_SIZE;
 }
