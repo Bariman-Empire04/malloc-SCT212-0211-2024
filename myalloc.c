@@ -148,3 +148,56 @@ void *my_realloc(void *ptr, size_t size) {
     my_free(ptr);
     return newptr;
 }
+void set_policy(fit_policy_t p) {
+    policy = p;
+}
+
+void heap_stats(heap_stats_t *out) {
+    out->total_blocks = out->free_blocks = out->used_blocks = 0;
+    out->total_bytes  = out->free_bytes  = out->used_bytes  = 0;
+
+    block_t *b = head;
+    while (b != NULL) {
+        out->total_blocks++;
+        out->total_bytes += b->size;
+        if (b->free) {
+            out->free_blocks++;
+            out->free_bytes += b->size;
+        } else {
+            out->used_blocks++;
+            out->used_bytes += b->size;
+        }
+        b = b->next;
+    }
+}
+
+void heap_dump(void) {
+    block_t *b = head;
+    while (b != NULL) {
+        fprintf(stderr, "[%p]  size=%-6zu  %s\n",
+                (void *)((char *)b + HEADER_SIZE),
+                b->size,
+                b->free ? "FREE" : "USED");
+        b = b->next;
+    }
+}
+
+int heap_check(void) {
+    block_t *b = head;
+    while (b != NULL) {
+        
+        if ((uintptr_t)((char *)b + HEADER_SIZE) % 16 != 0)
+            return 0;
+
+        
+        if (b->free && b->next != NULL && b->next->free)
+            return 0;
+
+        
+        if (b->next != NULL && (char *)b->next <= (char *)b)
+            return 0;
+
+        b = b->next;
+    }
+    return 1;
+}
