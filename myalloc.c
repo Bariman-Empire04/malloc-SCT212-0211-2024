@@ -119,3 +119,32 @@ void my_free(void *ptr) {
 
     return (char *)newb + HEADER_SIZE;
 }
+void *my_calloc(size_t n, size_t size) {
+    /* Guard against integer overflow (n * size could wrap around!) */
+    if (n != 0 && size > (size_t)-1 / n) return NULL;
+
+    size_t total = n * size;
+    void  *ptr   = my_malloc(total);
+    if (ptr != NULL)
+        memset(ptr, 0, total);    /* zero out the memory */
+    return ptr;
+}
+
+void *my_realloc(void *ptr, size_t size) {
+    /* Standard rules: */
+    if (ptr == NULL)  return my_malloc(size);
+    if (size == 0)  { my_free(ptr); return NULL; }
+
+    block_t *b = (block_t *)((char *)ptr - HEADER_SIZE);
+
+    /* If the block is already big enough, return as-is */
+    if (b->size >= ALIGN16(size)) return ptr;
+
+    /* Otherwise: allocate new block, copy, free old */
+    void *newptr = my_malloc(size);
+    if (newptr == NULL) return NULL;
+
+    memcpy(newptr, ptr, b->size);    /* copy old contents */
+    my_free(ptr);
+    return newptr;
+}
